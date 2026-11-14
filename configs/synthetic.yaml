@@ -1,0 +1,43 @@
+base_seed: 42
+n_target: 150
+max_attempts: 225
+out_dir: "data/synthetic"
+
+grid:
+  n_clean: 256
+  n_deg: 128
+
+geometry:
+  kind: csg
+  axis_jitter: 0.05
+  centre_jitter: 0.01
+  rotation_jitter_deg: 2.0
+  max_extent: 0.95
+
+tiers:
+  clean:
+    blur: 0.0
+    noise: 0.00
+    seg_threshold: 0.5
+  moderate:
+    blur: 1.0
+    noise: 0.05
+    seg_threshold: 0.5
+  poor:
+    blur: 2.0
+    noise: 0.10
+    seg_threshold: 0.7
+
+splits:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+
+correction:
+  operator: smart_smooth
+  allow_boundary: true
+  acceptance: penalty
+  sj_target: 0.30
+  floor_ratio: 0.5
+  n_iter: 8
+  gnn_prob_threshold: null

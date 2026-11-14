@@ -1,0 +1,15 @@
+{
+  "id": "anshkarwasra/project75-calibration",
+  "title": "Project75 Calibration",
+  "code_file": "calibrate.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [
+    "anshkarwasra/project75-calibration-inputs"
+  ],
+  "competition_sources": [],
+  "kernel_sources": []
+}

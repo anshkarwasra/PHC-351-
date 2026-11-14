@@ -1,0 +1,7 @@
+__pycache__/
+data/
+data/previews/
+*.pt
+*.vtu
+/kaggle_calibration/dataset/
+/kaggle_calibration/output/

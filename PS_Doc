@@ -1,0 +1,98 @@
+Project 75: AI-Based CT-to-Mesh Optimization for Simulation
+1. Project title AI-Based CT-to-Mesh Optimization for Simulation
+2. Background and problem statement Preparing a CT-derived mesh for FE/CFD simulation is a multi-stage pipeline — segmentation, surface extraction,
+tetrahedralisation, and quality repair/smoothing — in which errors compound: a noisy segmentation yields a rough surface, which yields poor-quality tetrahedra,
+which can crash a solver at assembly or convergence time. Manually iterating through the individual open-source tools (PyVista, trimesh, Open3D, TetGen/Gmsh) to
+fix each stage in turn is slow and ad hoc, and a student project attempting to invent a wholly new meshing algorithm to fix this is out of scope for a 35-mark module.
+This capstone instead builds an integrated, end-to-end pipeline that chains these existing open-source tools together and inserts exactly one learned component — a
+lightweight mesh-quality-prediction/smoothing-guidance GNN, in the spirit of Project 74 — that automatically flags and locally corrects simulation-readiness
+problems, and rigorously measures whether that single learned component improves simulation-readiness over the classical pipeline run with no correction at all.
+3. Main objective To implement and evaluate an integrated CT-to-simulation-ready-mesh pipeline — segmentation-quality-aware surface extraction, TetGen/Gmsh
+tetrahedralisation, and a single learned mesh-quality-driven local remeshing/smoothing correction stage — that measurably improves simulation-readiness
+(poor/inverted-element rate, surface accuracy, volume preservation, and downstream FE-assembly success) over the same classical pipeline run without the learned
+correction stage.
+4. Specific tasks to be completed 1. Build a library of synthetic CT-like phantom volumes spanning a spread of segmentation-quality conditions (clean, moderately
+degraded, poorly thresholded) to represent realistic imperfect student-facing CT preprocessing outcomes. 2. Implement the classical baseline pipeline end-to-end:
+threshold segmentation → Marching Cubes surface (scikit-image) → surface repair (trimesh: fill holes, remove degenerate/non-manifold faces, fix normals) →
+TetGen/Gmsh tetrahedralisation with default/uniform settings. 3. Train a lightweight GNN quality-prediction/smoothing-guidance model (a simplified, single-
+purpose adaptation of the Project-74-style approach) that flags per-element “needs local correction” and suggests a smoothing-iteration weight, from local mesh-
+quality features. 4. Integrate the learned component as a post-tetrahedralisation correction stage: identify flagged poor-quality regions, extract local patches
+(PyVista/trimesh), and apply targeted local Laplacian/Taubin smoothing or a local TetGen re-mesh with tightened sizing restricted to those regions only. 5. Quantify
+simulation-readiness before and after correction: poor/inverted-element fraction, surface Hausdorff distance to the known reference geometry, volume-
+preservation error, and watertightness. 6. Run a lightweight downstream sanity check — assembling a simple FE stiffness/Laplacian system or a basic steady-state
+heat-conduction solve (via scikit-fem or a minimal custom FE assembly script) on the before/after meshes — to demonstrate whether solver assembly succeeds and
+how convergence behaviour differs, as a practical simulation-readiness proxy (a full CFD/FE simulation study is explicitly out of scope). 7. Benchmark end-to-end
+pipeline runtime for the classical-only pipeline versus the classical-plus-learned-correction pipeline. 8. Critically discuss where the learned correction stage helps
+most (e.g. thin/sharp-feature regions, poorly segmented inputs) versus where it offers little benefit over a simple non-learned global fix.
+5. Required dataset/data A synthetic library of degraded CT-like phantom volumes (with a known clean reference mesh for each) generated entirely by the student’s
+own procedural phantom pipeline; every stage of the pipeline is built on open-source tools operating on this synthetic data, with no dependency on a real CT
+scanner.
+
+6. Number of images/volumes/samples recommended 100-150 phantom instances spanning three segmentation-quality tiers (clean/moderate/poor), split
+70/15/15, each carried through the full pipeline to produce a before/after mesh pair for evaluation.
+7. Data format required .raw/.npy (input volumes); .stl (extracted surfaces); .vtu/.msh (tetrahedral meshes, before and after correction); .npz (GNN
+features/predictions); FE-assembly logs as .json/.csv.
+8. How the data can be collected or synthetically generated Phantoms are generated with the procedural CSG pipeline used elsewhere in this category
+(independently instantiated, including thin ribs, fillets, and internal channels to stress simulation-readiness) and voxelised at a fixed resolution (e.g. 128³); the three
+segmentation-quality tiers are produced by applying controlled degradation — Gaussian volume smoothing plus additive noise followed by re-thresholding at a
+deliberately imperfect level — to the clean high-resolution mask, giving a fully controlled, reproducible spread of realistic imperfect-segmentation inputs without
+needing a real scanner.
+9. Ground-truth/label generation method All quality metrics used throughout the pipeline (scaled Jacobian, aspect ratio, dihedral angle) are computed by direct
+deterministic geometric formulas, exactly as in Projects 73/74, requiring no manual annotation; the geometric “reference” against which Hausdorff distance and
+volume-preservation error are measured is the known clean high-resolution phantom mesh generated before degradation was applied, giving an exact end-to-end
+accuracy ground truth for the whole pipeline’s output.
+10. Data preprocessing Resample/normalise volumes to a consistent voxel spacing; apply morphological cleanup (remove small floating connected components)
+before surface extraction; run trimesh mesh-repair routines (fill_holes, remove_degenerate_faces, fix_normals) on the extracted surface prior to
+tetrahedralisation to ensure a valid manifold input to TetGen/Gmsh.
+11. Recommended AI/ML algorithms A single lightweight GraphSAGE-style GNN (as in Project 74, simplified) providing the pipeline’s one learned component: per-
+element “needs correction” flagging and smoothing-weight suggestion; no other new model architecture is introduced — this project’s contribution is the pipeline
+integration and evaluation, not new model design.
+12. Proposed model architecture 3-layer GraphSAGE, hidden dimension 64, operating on the element-adjacency graph, output: a per-element binary “flag for local
+correction” head plus a continuous suggested smoothing-iteration-weight head (0-1); approximately 80k parameters, deliberately kept small since it is one
+component of a larger integrated system rather than the project’s research focus.
+13. Complete project workflow 1. Generate phantom volumes across the three segmentation-quality tiers, retaining the clean reference mesh for each. 2.
+Threshold-segment the degraded volume and extract a surface via Marching Cubes. 3. Repair the surface mesh with trimesh. 4. Tetrahedralise with TetGen/Gmsh at
+default settings (classical-only checkpoint). 5. Compute per-element quality via PyVista/VTK cell-quality filters. 6. Run the trained GNN to flag poor-quality regions
+and suggest smoothing weights. 7. Apply targeted local smoothing/re-meshing to flagged regions only (corrected checkpoint). 8. Re-verify mesh quality on the
+corrected checkpoint. 9. Compute geometric accuracy (Hausdorff/volume error) of both checkpoints against the known clean reference mesh. 10. Run the FE/heat-
+conduction assembly sanity check on both checkpoints. 11. Benchmark runtime and summarise results in a comparative report.
+14. Training procedure The GNN component is trained exactly as in a Project-74-style setup: combined MSE (quality-score regression) + focal-loss (poor/inverted
+classification), Adam, learning rate 1e-3, ~150 epochs, on a subset of tetrahedral meshes generated across the segmentation-quality spread, with rotation/rescaling
+augmentation of the underlying phantom shapes; trainable on a single GPU given the model’s small size.
+15. Testing procedure 70/15/15 split by phantom instance, with each split containing examples from all three segmentation-quality tiers; the full pipeline is
+evaluated end-to-end only on the held-out test split, comparing the classical-only pipeline output against the classical-plus-learned-correction pipeline output on
+identical input volumes.
+
+16. Expected outputs Trained GNN weights; before/after mesh pairs for every test volume; quality-improvement summary tables and plots; FE-assembly
+success/failure logs; a runtime-benchmark table; the full end-to-end pipeline code/notebook.
+17. Evaluation metrics Poor/inverted-element fraction (before vs after correction); mean/minimum scaled Jacobian; surface Hausdorff distance to the known
+reference mesh; volume-preservation error (%); watertightness rate; FE/heat-conduction assembly success rate and a solver-readiness proxy (condition number or
+convergence-iteration count); end-to-end wall-clock runtime.
+18. Minimum experiments required 1. Classical-only pipeline vs classical-plus-learned-correction pipeline across the full test set (primary comparison). 2. Results
+stratified by input segmentation-quality tier (clean/moderate/poor) to identify where correction matters most. 3. Learned, targeted local correction vs a simple non-
+learned baseline correction (uniform global Taubin smoothing plus uniform finer-global-size TetGen re-tetrahedralisation) — isolating the value of the learned,
+spatially-targeted aspect specifically. 4. Ablation checking whether correction actually changes FE/heat-conduction assembly outcomes, not merely geometric
+quality-metric values. 5. Runtime-overhead analysis of the learned-correction stage relative to total pipeline time.
+19. Suggested comparison/baseline methods The full classical pipeline with no learned correction (thresholding → Marching Cubes → trimesh repair →
+TetGen/Gmsh default tetrahedralisation only) as the primary baseline; a second baseline of “blind” uniform global smoothing/re-meshing applied everywhere (no
+targeting) to isolate the specific value of learned, spatially-targeted correction.
+20. Expected results A 25-45% reduction in the poor/inverted-element fraction after learned-targeted correction relative to the classical-only baseline, concentrated
+on the “poor segmentation” input tier; FE/heat-conduction assembly success rate improving from roughly 70-85% (classical-only, poor tier) to ≥95% (with
+correction); learned-targeted correction achieving quality improvement comparable to or better than blind uniform correction while touching substantially fewer
+elements, at correspondingly lower runtime overhead.
+21. Possible challenges Integrating multiple third-party meshing libraries whose Python APIs and versions can be fragile together (TetGen wrapper, Gmsh, trimesh,
+PyVista); defining local re-meshing on flagged regions robustly without introducing new non-manifold boundaries at patch edges; keeping the FE sanity-check stage
+genuinely minimal to avoid scope creep into a full CFD/FE simulation project; ensuring the classical-only vs corrected comparison is fair (matched element-count
+budgets, matched runtime where relevant); reproducibility across the many chained open-source tools and their version dependencies.
+22. Suggested Python libraries/software PyTorch, PyTorch Geometric, PyVista, VTK, trimesh, Open3D, scikit-image, tetgen/pygmsh/gmsh, scikit-fem (or a
+minimal custom FE assembly script) for the sanity-check solve, NumPy, SciPy.
+23. 35-mark evaluation scheme Literature review/background: 4; Data preparation: 5; Methodology/implementation: 11; Results &amp; evaluation: 8; Report &amp;
+presentation: 4; Critical discussion: 3. (Total: 35)
+24. Expected final deliverables Full modular pipeline code repository (segmentation → surface → tetrahedralisation → learned correction → FE sanity check);
+trained GNN weights; the before/after mesh dataset; FE-sanity-check scripts and logs; a comparative report with plots/tables; presentation; a live demo running the
+full pipeline end-to-end on 2-3 example volumes.
+25. Difficulty level Research-oriented
+26. Estimated completion time 14 weeks
+27. Whether synthetic CT data, experimental CT data, or both should be used Synthetic only. A controlled, exact-ground-truth spectrum of segmentation-quality
+degradation is required to isolate and attribute failures to specific pipeline stages reproducibly; the project is explicitly scoped as gluing together existing open-
+source meshing tools plus one learned component, not inventing a new meshing algorithm, and no CT scanner access is assumed or required.

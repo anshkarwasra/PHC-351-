@@ -1,0 +1,82 @@
+[
+ {
+  "step": 1,
+  "name": "no_inverted_tets",
+  "status": "pass",
+  "measured": 0,
+  "threshold": 0,
+  "detail": "193433 tets"
+ },
+ {
+  "step": 1,
+  "name": "jacobian_agreement",
+  "status": "pass",
+  "measured": 5.551115123125783e-17,
+  "threshold": 0.001,
+  "detail": "sampled 3 tets"
+ },
+ {
+  "step": 1,
+  "name": "median_scaled_jacobian",
+  "status": "pass",
+  "measured": 0.4215970714986453,
+  "threshold": 0.1,
+  "detail": ""
+ },
+ {
+  "step": 1,
+  "name": "sliver_fraction",
+  "status": "pass",
+  "measured": 0.0013751531538051935,
+  "threshold": 0.05,
+  "detail": ""
+ },
+ {
+  "step": 1,
+  "name": "min_scaled_jacobian",
+  "status": "pass",
+  "measured": 0.011611666484684771,
+  "threshold": 0.0,
+  "detail": "min must be positive for a valid mesh"
+ },
+ {
+  "step": 2,
+  "name": "fe_known_problem_linear",
+  "status": "pass",
+  "measured": 4.258860945016707e-07,
+  "threshold": 1e-06,
+  "detail": "cg info=0, iters=8"
+ },
+ {
+  "step": 2,
+  "name": "fe_mesh_converged",
+  "status": "pass",
+  "measured": 378,
+  "threshold": 2000,
+  "detail": "cg info=0, final residual=3.21e-11"
+ },
+ {
+  "step": 3,
+  "name": "rejection_keeps_mesh_valid",
+  "status": "pass",
+  "measured": true,
+  "threshold": true,
+  "detail": "accepted=1, rejected=0"
+ },
+ {
+  "step": 4,
+  "name": "element_count_within_target",
+  "status": "warn",
+  "measured": 244990,
+  "threshold": 120000,
+  "detail": "450 of 450 above target; median=178444"
+ },
+ {
+  "step": 4,
+  "name": "tier_bad_fraction_separation",
+  "status": "warn",
+  "measured": null,
+  "threshold": null,
+  "detail": "poor_frac column missing; add it to the mesh stage"
+ }
+]
